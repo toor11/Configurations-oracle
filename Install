@@ -1,0 +1,124 @@
+INSTALLING ORACLE CLIENT Debian 8.2
+
+1. Check you have X11Forward active
+user@PLUS:~$ cat /etc/ssh/ssh_config | grep ForwardX11 
+ForwardX11 yes
+#   ForwardX11Trusted yes
+
+2. create oracle user:
+adduser oracle
+
+5. MODIFY KERNEL Parameters
+vi /etc/sysctl.conf
+
+ADD:
+############ORACLE CLIENT##########
+fs.file-max = 6815744
+kernel.shmall = 2097152
+kernel.shmmax = 2147483648
+kernel.shmmni = 4096
+kernel.sem = 250 32000 100 128
+net.ipv4.ip_local_port_range = 9000 65500
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048576
+
+# we are going to use the .rpm packages and convert them to .deb; we need alien for this:
+aptitude install alien
+
+cd /tmp
+
+#Now go here
+#http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html
+#select the instant client for 11g Linux x64 + SDK (got Version 11.2.0.3.0, others may work too of course)
+#Download using your browser, wget will probably only get html pages as you need to log in etc.
+# This is not enough:
+# Instant Client Package - Basic Lite rpm
+# instead use the full instant client package:
+# Instant Client Package - Basic: All files required to run OCI, OCCI, and JDBC-OCI applications 
+http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html
+
+# this is optional but handy for running sqlplus to see if everything works
+# Instant Client Package - SQL*Plus: Additional libraries and executable for running SQL*Plus with Instant Client
+http://download.oracle.com/otn/linux/instantclient/11203/oracle-instantclient11.2-sqlplus-11.2.0.3.0-1.x86_64.rpm
+
+# the sdk is probably not needed:
+# Instant Client Package - SDK: Additional header files and an example makefile for developing Oracle applications with Instant Client
+http://download.oracle.com/otn/linux/instantclient/11203/oracle-instantclient11.2-devel-11.2.0.3.0-1.x86_64.rpm
+
+# odbc can be useful if you want to test FPC behaviour with ODBC
+# Instant Client Package - ODBC: Additional libraries for enabling ODBC applications
+http://download.oracle.com/otn/linux/instantclient/11203/oracle-instantclient11.2-odbc-11.2.0.3.0-1.x86_64.rpm
+
+#convert the rpm packages to .deb packages
+alien *.rpm
+# install
+dpkg -i *.deb
+
+#add some prereqs not picked up; requirements for instant client
+aptitude install libaio1
+
+#My oracle home now is
+#/usr/lib/oracle/11.2/client64/
+# yours may vary
+
+#We also are going to use tnsnames.ora, which will need an env var as well:
+#"If you want to use Net Service Names configured in a local Oracle Net tnsnames.ora file, then set the environment variable TNS_ADMIN to the directory containing the tnsnames.ora file." 
+
+#set systemwide Oracle_home variable (we need the .sh extension for the bash shell to accept this)
+cat >> /etc/profile.d/oracleclient.sh << "EOF_DOCUMENT"
+# needed for Oracle client
+export ORACLE_HOME="/usr/lib/oracle/11.2/client64"
+# needed if tnsnames.ora is used with Net Service Names
+#todo: perhaps not really needed as client can find this via oracle_home see
+#http://www.oracle.com/technetwork/database/features/oci/ic-faq-094177.html#A4428
+export TNS_ADMIN="/usr/lib/oracle/11.2/client64/network/admin"
+
+EOF_DOCUMENT
+chmod +x /etc/profile.d/oracleclient.sh
+
+#load manually now:
+/etc/profile.d/oracleclient.sh
+
+# Create some logging directory that Oracle seems to like:
+mkdir -p $ORACLE_HOME/log
+
+# Set up tnsnames.ora:
+mkdir -p $ORACLE_HOME/network/admin
+
+# add tnsnames.ora with details about remote dbs (not strictly required but handy):
+cat >> $ORACLE_HOME/network/admin/tnsnames.ora << "EOF_DOCUMENT"
+# the contents of your tnsnames.ora specifying (remote hosts) etc, e.g.
+ORCL =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = DBHOSTNAME)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVER = DEDICATED)
+      (SERVICE_NAME = orcl)
+    )
+  )
+EOF_DOCUMENT
+
+# change library path/shared library search path to find Oracle libs
+# needed for SQL*Plus and quite probably for fpc applications as well
+# we need the .conf extension, otherwise it won't work!
+cat >> /etc/ld.so.conf.d/oracle.conf << "EOF_DOCUMENT"
+$ORACLE_HOME/lib/
+EOF_DOCUMENT
+
+ldconfig
+
+#test sqlplus to see if the library works:
+$ORACLE_HOME/bin/sqlplus
+
+#connectin examples: Connect to orcl service on host 192.168.0.1 using password tiger, username scott:
+$ORACLE_HOME/bin/sqlplus scott/tiger@//192.168.0.1/orcl
+#or via tnsnames.ora:
+$ORACLE_HOME/bin/sqlplus scott/tiger@ORCL
+
+# Hint: sql*plus connectionerrors will show up in sqlnet.log
+
+
+
+
