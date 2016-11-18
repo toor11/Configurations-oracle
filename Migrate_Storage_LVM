@@ -1,0 +1,83 @@
+#This procedure will migrate LV from /dev/sdb,/dev/sde TO /dev/sdc /dev/sdd
+
+
+
+
+
+root@kali:/mnt/test# lvs -a -o+devices                                                                                                                                                                                              
+  LV     VG      Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert Devices        
+  home   kali-vg -wi-ao----    9.55g                                                     /dev/sda5(2868)
+  root   kali-vg -wi-ao----   19.21g                                                     /dev/sda5(0)   
+  root   kali-vg -wi-ao----   19.21g                                                     /dev/sda5(5314)
+  swap_1 kali-vg -wi-ao---- 1020.00m                                                     /dev/sda5(2613)
+  testLV testVG  -wi-ao----  152.00m                                                     /dev/sdb(1)    
+  testLV testVG  -wi-ao----  152.00m                                                     /dev/sde(0)
+
+
+root@kali:/mnt/test# lvconvert -m 1 /dev/testVG/testLV /dev/sdc /dev/sdd 
+  Using default stripesize 64.00 KiB.
+  Logical volume testVG/testLV successfully converted.
+
+root@kali:/mnt/test# lvs -a -o+devices                                                                                                                                                                                              
+  LV                VG      Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert Devices                              
+  home              kali-vg -wi-ao----    9.55g                                                     /dev/sda5(2868)                      
+  root              kali-vg -wi-ao----   19.21g                                                     /dev/sda5(0)                         
+  root              kali-vg -wi-ao----   19.21g                                                     /dev/sda5(5314)                      
+  swap_1            kali-vg -wi-ao---- 1020.00m                                                     /dev/sda5(2613)                      
+  testLV            testVG  rwi-aor---  152.00m                                    100.00           testLV_rimage_0(0),testLV_rimage_1(0)
+  [testLV_rimage_0] testVG  iwi-aor---  152.00m                                                     /dev/sdb(1)                          
+  [testLV_rimage_0] testVG  iwi-aor---  152.00m                                                     /dev/sde(0)                          
+  [testLV_rimage_1] testVG  iwi-aor---  152.00m                                                     /dev/sdc(1)                          
+  [testLV_rimage_1] testVG  iwi-aor---  152.00m                                                     /dev/sdd(0)                          
+  [testLV_rmeta_0]  testVG  ewi-aor---    4.00m                                                     /dev/sdb(0)                          
+  [testLV_rmeta_1]  testVG  ewi-aor---    4.00m                                                     /dev/sdc(0)                    
+
+
+root@kali:/mnt/test# lvconvert -m 0 /dev/testVG/testLV /dev/sdb /dev/sde                                                                                                                                                            
+  Using default stripesize 64.00 KiB.
+  Logical volume testVG/testLV successfully converted.
+
+root@kali:/mnt/test# lvs -a -o+devices
+  LV     VG      Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert Devices        
+  home   kali-vg -wi-ao----    9.55g                                                     /dev/sda5(2868)
+  root   kali-vg -wi-ao----   19.21g                                                     /dev/sda5(0)   
+  root   kali-vg -wi-ao----   19.21g                                                     /dev/sda5(5314)
+  swap_1 kali-vg -wi-ao---- 1020.00m                                                     /dev/sda5(2613)
+  testLV testVG  -wi-ao----  152.00m                                                     /dev/sdc(1)    
+  testLV testVG  -wi-ao----  152.00m                                                     /dev/sdd(0)    
+
+root@kali:/mnt/test# pvs
+  PV         VG      Fmt  Attr PSize   PFree  
+  /dev/sda5  kali-vg lvm2 a--   29.76g      0 
+  /dev/sdb   testVG  lvm2 a--  100.00m 100.00m
+  /dev/sdc   testVG  lvm2 a--  100.00m   4.00m
+  /dev/sdd   testVG  lvm2 a--  100.00m  44.00m
+  /dev/sde   testVG  lvm2 a--  100.00m 100.00m
+root@kali:/mnt/test# vgre
+vgreduce  vgremove  vgrename  
+root@kali:/mnt/test# vgreduce 
+kali-vg  testVG   
+root@kali:/mnt/test# vgreduce testVG /dev/sdb /dev/sde
+  Removed "/dev/sdb" from volume group "testVG"
+  Removed "/dev/sde" from volume group "testVG"
+root@kali:/mnt/test# pvs
+  PV         VG      Fmt  Attr PSize   PFree  
+  /dev/sda5  kali-vg lvm2 a--   29.76g      0 
+  /dev/sdb           lvm2 ---  102.00m 102.00m
+  /dev/sdc   testVG  lvm2 a--  100.00m   4.00m
+  /dev/sdd   testVG  lvm2 a--  100.00m  44.00m
+  /dev/sde           lvm2 ---  102.00m 102.00m
+
+root@kali:/mnt/test# pvremove /dev/sdb /dev/sde
+  Labels on physical volume "/dev/sdb" successfully wiped.
+  Labels on physical volume "/dev/sde" successfully wiped.
+
+=================================================================
+
+nqs eshte full vg ath duhet ta bejme pa Logical
+
+root@kali:/mnt/test# lvconvert -m 1 /dev/testVG/testLV /dev/sdb /dev/sde 
+  Using default stripesize 64.00 KiB.
+  Insufficient free space: 1 extents needed, but only 0 available
+
+lvconvert -m 1 sys/test /dev/sdb1 --mirrorlog core
