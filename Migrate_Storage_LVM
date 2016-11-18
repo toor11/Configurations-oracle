@@ -1,6 +1,31 @@
 #This procedure will migrate LV from /dev/sdb,/dev/sde TO /dev/sdc /dev/sdd
 
 
+root@kali:/mnt/test# pvcreate /dev/sdc
+  Physical volume "/dev/sdc" successfully created.
+root@kali:/mnt/test# vgextend 
+kali-vg  testVG   
+root@kali:/mnt/test# vgextend testVG /dev/sdc 
+  Volume group "testVG" successfully extended
+root@kali:/mnt/test# 
+
+root@kali:/mnt/test# pvcreate /dev/sdd
+  Physical volume "/dev/sdd" successfully created.
+root@kali:/mnt/test# vgextend 
+kali-vg  testVG   
+root@kali:/mnt/test# vgextend testVG /dev/sdd 
+  Volume group "testVG" successfully extended
+root@kali:/mnt/test# 
+
+
+root@kali:~# pvs
+  PV         VG      Fmt  Attr PSize   PFree  
+  /dev/sda5  kali-vg lvm2 a--   29.76g      0 
+  /dev/sdb   testVG  lvm2 ---  101.00m 101.00m
+  /dev/sdc           lvm2 a--  100.00m 100.00m
+  /dev/sdd           lvm2 a--  100.00m  40.00m
+  /dev/sde   testVG  lvm2 ---  102.00m 102.00m
+
 
 
 
